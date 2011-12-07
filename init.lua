@@ -73,10 +73,10 @@ local function doconv ( self , instr )
 	if #instr > inbuff_buff_size then
 		inbuff_buff_size = #instr
 		inbuff_buff = ffi.new ( "char[?]" , inbuff_buff_size )
-		inbuff[0] = inbuff_buff
 	end
 
 	ffi.copy ( inbuff_buff , instr )
+	inbuff[0] = inbuff_buff
 	inleft[0] = #instr
 
 	repeat
