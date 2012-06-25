@@ -61,33 +61,32 @@ local function new ( from , to )
 	return ffi.gc ( check ( iconv_funcs.iconv_open ( to , from ) ) , iconv_funcs.iconv_close )
 end
 
-local inleft , outleft = ffi.new ( "size_t[1]" ) , ffi.new ( "size_t[1]" )
-local buff_size = 1024
-local inbuff_buff_size = 0
-local inbuff_buff
-local inbuff = ffi.new ( "char *[1]" , inbuff_buff  )
-local outbuff = ffi.new ( "char[?]" , buff_size )
+local out_buff_size = 1024
+local outbuff = ffi.new ( "char[?]" , out_buff_size )
+local in_buff_size = -1
+local inbuff
+
 local function doconv ( self , instr )
 	local t = { }
 
-	if #instr > inbuff_buff_size then
-		inbuff_buff_size = #instr
-		inbuff_buff = ffi.new ( "char[?]" , inbuff_buff_size )
+	if #instr > in_buff_size then
+		inbuff = ffi.new ( "char[?]" , #instr )
+		in_buff_size = #instr
 	end
 
-	ffi.copy ( inbuff_buff , instr )
-	inbuff[0] = inbuff_buff
-	inleft[0] = #instr
+	ffi.copy ( inbuff , instr , #instr )
+	local inbuff_p , outbuff_p = ffi.new ( "char*[1]" , { inbuff } ) , ffi.new ( "char*[1]" , { outbuff } )
+	local inleft , outleft = ffi.new ( "size_t[1]" , { #instr } ) , ffi.new ( "size_t[1]" , { out_buff_size } )
 
 	repeat
-		outleft[0] = buff_size
-		local n = check ( iconv_funcs.iconv ( self , inbuff , inleft , ffi.new ( "char*[1]" , outbuff ) , outleft ) )
-		tblinsert ( t , ffi.string ( outbuff , buff_size - outleft[0] ) )
+		local n = check ( iconv_funcs.iconv ( self , inbuff_p , inleft , outbuff_p , outleft ) )
+		local s = ffi.string ( outbuff , out_buff_size - outleft[0] )
+		outleft[0] = out_buff_size
+		tblinsert ( t , s )
 	until inleft[0] == 0
 
 	-- Reset the state
 	check ( iconv_funcs.iconv ( self , nil , nil , nil , nil ) )
-
 	return tblconcat ( t )
 end
 
